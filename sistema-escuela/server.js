@@ -1,41 +1,34 @@
-import express from 'express';
-import cors from 'cors';
-import authRoutes from './routes/authRoutes.js';
-import studentRoutes from './routes/studentRoutes.js';
-import teacherRoutes from './routes/teacherRoutes.js';
-import sharedRoutes from './routes/sharedRoutes.js';
-import sequelize from './config/database.js';
+import app from './app.js';
+import { syncModels } from './models/dbInit.js';
+import dotenv from 'dotenv';
+import { createServer } from 'http';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import fs from 'fs';
 
-// Modelos (importar para que Sequelize los registre)
-import './models/User.js';
-import './models/Student.js';
-import './models/Teacher.js';
-import './models/Course.js';
-import './models/Attendance.js';
-import './models/Grade.js';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config();
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Rutas
-app.use('/api/auth', authRoutes);
-app.use('/api/student', studentRoutes);
-app.use('/api/teacher', teacherRoutes);
-app.use('/api/shared', sharedRoutes);
-
-// Inicialización del servidor y DB
-(async () => {
-  try {
-    await sequelize.sync(); // { force: true } si querés reiniciar tablas
-    console.log('Base de datos sincronizada');
-    app.listen(PORT, () => {
-      console.log(`Servidor corriendo en http://localhost:${PORT}`);
-    });
-  } catch (error) {
-    console.error('Error al conectar con la base de datos:', error);
+// Crear directorios necesarios si no existen
+const ensureDirectoryExists = (dir) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
-})();
+};
+
+ensureDirectoryExists(path.join(__dirname, process.env.UPLOADS_FOLDER));
+ensureDirectoryExists(path.join(__dirname, 'temp'));
+
+// Sincronizar modelos y luego iniciar servidor
+syncModels().then(() => {
+  const server = createServer(app);
+  
+  server.listen(port, () => {
+    console.log(`Servidor corriendo en http://localhost:${port}`);
+  });
+}).catch(error => {
+  console.error('Error al iniciar el servidor:', error);
+  process.exit(1);
+});

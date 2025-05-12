@@ -1,9 +1,10 @@
-export const authorize = (role) => {
-    return (req, res, next) => {
-      if (req.user.role !== role) {
-        return res.status(403).json({ message: 'No autorizado' });
-      }
-      next();
-    };
+import { ROLES } from '../config/roles.js';
+
+export const requireRole = (roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.usuario.rol)) {
+      return res.status(403).json({ error: 'Acceso prohibido' });
+    }
+    next();
+  };
 };
-  

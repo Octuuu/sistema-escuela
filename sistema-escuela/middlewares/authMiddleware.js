@@ -1,20 +1,27 @@
 import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+import Usuario from '../models/usuario.model.js';
 
-const JWT_SECRET = 'secreto123'; 
+dotenv.config();
 
-export const authenticate = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith('Bearer '))
-    return res.status(401).json({ message: 'Token no proporcionado' });
-
-  const token = authHeader.split(' ')[1];
-
+export const authenticate = async (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Acceso no autorizado' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const usuario = await Usuario.findByPk(decoded.id);
+
+    if (!usuario) {
+      return res.status(401).json({ error: 'Usuario no encontrado' });
+    }
+
+    req.usuario = usuario;
     next();
-  } catch (err) {
-    res.status(401).json({ message: 'Token inválido' });
+  } catch (error) {
+    res.status(401).json({ error: 'Token inválido o expirado' });
   }
 };
